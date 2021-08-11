@@ -2,16 +2,16 @@ import { TSESTree } from "@typescript-eslint/experimental-utils";
 import { all as deepMerge } from "deepmerge";
 import { JSONSchema4 } from "json-schema";
 
-import {
+import type {
   IgnorePatternOption,
-  ignorePatternOptionSchema,
+  IgnorePrefixSelectorOption,
 } from "../common/ignore-options";
 import {
-  createRule,
-  RuleContext,
-  RuleMetaData,
-  RuleResult,
-} from "../util/rule";
+  ignorePatternOptionSchema,
+  ignorePrefixSelectorOptionSchema,
+} from "../common/ignore-options";
+import type { RuleContext, RuleMetaData, RuleResult } from "../util/rule";
+import { createRuleUsingFunction } from "../util/rule";
 import { isIIFE, isPropertyAccess, isPropertyName } from "../util/tree";
 import { isRestElement } from "../util/typeguard";
 
@@ -21,22 +21,24 @@ export const name = "functional-parameters" as const;
 type ParameterCountOptions = "atLeastOne" | "exactlyOne";
 
 // The options this rule can take.
-type Options = IgnorePatternOption & {
-  readonly allowRestParameter: boolean;
-  readonly allowArgumentsKeyword: boolean;
-  readonly enforceParameterCount:
-    | false
-    | ParameterCountOptions
-    | {
-        readonly count: ParameterCountOptions;
-        readonly ignoreIIFE: boolean;
-      };
-};
+type Options = IgnorePatternOption &
+  IgnorePrefixSelectorOption & {
+    readonly allowRestParameter: boolean;
+    readonly allowArgumentsKeyword: boolean;
+    readonly enforceParameterCount:
+      | ParameterCountOptions
+      | false
+      | {
+          readonly count: ParameterCountOptions;
+          readonly ignoreIIFE: boolean;
+        };
+  };
 
 // The schema for the rule options.
 const schema: JSONSchema4 = [
   deepMerge([
     ignorePatternOptionSchema,
+    ignorePrefixSelectorOptionSchema,
     {
       type: "object",
       properties: {
@@ -85,6 +87,7 @@ const defaultOptions: Options = {
     count: "atLeastOne",
     ignoreIIFE: true,
   },
+  ignorePrefixSelector: undefined,
 };
 
 // The possible error messages.
@@ -224,14 +227,33 @@ function checkIdentifier(
 }
 
 // Create the rule.
-export const rule = createRule<keyof typeof errorMessages, Options>(
-  name,
-  meta,
-  defaultOptions,
-  {
-    FunctionDeclaration: checkFunction,
-    FunctionExpression: checkFunction,
-    ArrowFunctionExpression: checkFunction,
+export const rule = createRuleUsingFunction<
+  keyof typeof errorMessages,
+  Options
+>(name, meta, defaultOptions, (context, options) => {
+  const baseFunctionSelectors = [
+    "FunctionDeclaration",
+    "FunctionExpression",
+    "ArrowFunctionExpression",
+  ];
+
+  const ignoreSelectors: ReadonlyArray<string> | undefined =
+    options.ignorePrefixSelector === undefined
+      ? undefined
+      : Array.isArray(options.ignorePrefixSelector)
+      ? options.ignorePrefixSelector
+      : [options.ignorePrefixSelector];
+
+  const fullFunctionSelectors = baseFunctionSelectors.flatMap((baseSelector) =>
+    ignoreSelectors === undefined
+      ? [baseSelector]
+      : `:not(:matches(${ignoreSelectors.join(",")})) > ${baseSelector}`
+  );
+
+  return {
+    ...Object.fromEntries(
+      fullFunctionSelectors.map((selector) => [selector, checkFunction])
+    ),
     Identifier: checkIdentifier,
-  }
-);
+  };
+});

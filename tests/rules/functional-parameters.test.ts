@@ -53,6 +53,66 @@ const es3Valid: ReadonlyArray<ValidTestCase> = [
       [{ ignorePattern: "^foo", enforceParameterCount: "exactlyOne" }],
     ],
   },
+  {
+    code: dedent`
+      [1, 2, 3].reduce(
+        function(carry, current) {
+          return carry + current;
+        },
+        0
+      );`,
+    optionsSet: [
+      [
+        {
+          ignorePrefixSelector: "CallExpression[callee.property.name='reduce']",
+          enforceParameterCount: "exactlyOne",
+        },
+      ],
+    ],
+  },
+  {
+    code: dedent`
+      [1, 2, 3].map(
+        function(element, index) {
+          return element + index;
+        },
+        0
+      );`,
+    optionsSet: [
+      [
+        {
+          enforceParameterCount: "exactlyOne",
+          ignorePrefixSelector: "CallExpression[callee.property.name='map']",
+        },
+      ],
+    ],
+  },
+  {
+    code: dedent`
+      [1, 2, 3]
+        .map(
+          function(element, index) {
+            return element + index;
+          }
+        )
+        .reduce(
+          function(carry, current) {
+            return carry + current;
+          },
+          0
+        );`,
+    optionsSet: [
+      [
+        {
+          enforceParameterCount: "exactlyOne",
+          ignorePrefixSelector: [
+            "CallExpression[callee.property.name='reduce']",
+            "CallExpression[callee.property.name='map']",
+          ],
+        },
+      ],
+    ],
+  },
 ];
 
 // Invalid test cases.
@@ -147,6 +207,36 @@ const es3Invalid: ReadonlyArray<InvalidTestCase> = [
       },
     ],
   },
+  {
+    code: dedent`
+      [1, 2, 3]
+        .map(
+          function(element, index) {
+            return element + index;
+          }
+        )
+        .reduce(
+          function(carry, current) {
+            return carry + current;
+          },
+          0
+        );`,
+    optionsSet: [[{ enforceParameterCount: "exactlyOne" }]],
+    errors: [
+      {
+        messageId: "paramCountExactlyOne",
+        type: "FunctionExpression",
+        line: 3,
+        column: 5,
+      },
+      {
+        messageId: "paramCountExactlyOne",
+        type: "FunctionExpression",
+        line: 8,
+        column: 5,
+      },
+    ],
+  },
 ];
 
 // Valid test cases.
@@ -172,6 +262,57 @@ const es6Valid: ReadonlyArray<ValidTestCase> = [
         console.log(bar);
       }`,
     optionsSet: [[{ ignorePattern: "^foo" }]],
+  },
+  {
+    code: dedent`
+      [1, 2, 3].reduce(
+        (carry, current) => carry + current,
+        0
+      );`,
+    optionsSet: [
+      [
+        {
+          enforceParameterCount: "exactlyOne",
+          ignorePrefixSelector: "CallExpression[callee.property.name='reduce']",
+        },
+      ],
+    ],
+  },
+  {
+    code: dedent`
+      [1, 2, 3].map(
+        (element, index) => element + index,
+        0
+      );`,
+    optionsSet: [
+      [
+        {
+          enforceParameterCount: "exactlyOne",
+          ignorePrefixSelector: "CallExpression[callee.property.name='map']",
+        },
+      ],
+    ],
+  },
+  {
+    code: dedent`
+      [1, 2, 3]
+        .map(
+          (element, index) => element + index
+        )
+        .reduce(
+          (carry, current) => carry + current, 0
+        );`,
+    optionsSet: [
+      [
+        {
+          enforceParameterCount: "exactlyOne",
+          ignorePrefixSelector: [
+            "CallExpression[callee.property.name='reduce']",
+            "CallExpression[callee.property.name='map']",
+          ],
+        },
+      ],
+    ],
   },
 ];
 
