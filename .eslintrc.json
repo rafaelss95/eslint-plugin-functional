@@ -30,6 +30,8 @@
   "rules": {
     "@typescript-eslint/no-unnecessary-condition": "off",
     "import/no-relative-parent-imports": "error",
+    "functional/prefer-readonly-type": "off",
+    "functional/prefer-readonly-type-declaration": "warn",
     "node/no-unsupported-features/es-builtins": "off",
     "node/no-unsupported-features/es-syntax": "off",
     // enable once supported in all our supported node versions.
