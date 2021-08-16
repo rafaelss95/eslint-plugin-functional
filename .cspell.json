@@ -29,12 +29,13 @@
     "/\\.\\/docs\\/rules\\/[^.]*.md/",
     "/TS[^\\s]+/",
     "\\(#.+?\\)",
-    "\/\/ @ts-.*"
+    "// @ts-.*"
   ],
   "words": [
     "globstar",
     "IIFE",
     "IIFEs",
+    "readonlyness",
     "ruleset",
     "rulesets",
     "typeguard",

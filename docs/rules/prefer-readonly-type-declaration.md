@@ -54,17 +54,9 @@ This rule accepts an options object of the following type:
   ignoreInterface: boolean;
   ignoreCollections: boolean;
   ignorePattern?: string | Array<string>;
-  aliases: {
-    mustBeReadonly: {
-      pattern: ReadonlyArray<string> | string;
-      requireOthersToBeMutable: boolean;
-    };
-    mustBeMutable: {
-      pattern: ReadonlyArray<string> | string;
-      requireOthersToBeReadonly: boolean;
-    };
-    blacklist: ReadonlyArray<string> | string;
-  };
+  ignoreAliasPatterns: string | Array<string>;
+  readonlyAliasPatterns: string | Array<string>;
+  mutableAliasPatterns: string | Array<string>;
 }
 ```
 
@@ -77,17 +69,9 @@ The default options:
   ignoreClass: false,
   ignoreInterface: false,
   ignoreCollections: false,
-  aliases: {
-    blacklist: "^Mutable$",
-    mustBeReadonly: {
-      pattern: "^(I?)Readonly",
-      requireOthersToBeMutable: false,
-    },
-    mustBeMutable: {
-      pattern: "^(I?)Mutable",
-      requireOthersToBeReadonly: true,
-    },
-  },
+  readonlyAliasPatterns: "^(?!I?Mutable).+$",
+  mutableAliasPatterns: "^I?Mutable.+$",
+  ignoreAliasPatterns: "^Mutable$",
 }
 ```
 
@@ -169,63 +153,48 @@ const baz: Set<string, string> = new Set();
 const qux: Map<string, string> = new Map();
 ```
 
-### `aliases`
+### `readonlyAliasPatterns` and `mutableAliasPatterns`
 
 These options apply only to type aliases and interface declarations.
 
-#### `aliases.mustBeReadonly`
+The regex pattern(s) specified here are used to test against the type's name.
+If it's a match then for `readonlyAliasPatterns` the type must be deeply readonly; for `mutableAliasPatterns` the type must be **not** deeply readonly;.
 
-##### `aliases.mustBeReadonly.pattern`
+These options can be set to an empty array to disable this check.
 
-The regex pattern(s) used to test against the type's name. If it's a match the type must be deeply readonly.
+#### Common configs for these options
 
-Set to an empty array to disable this check.
+Require all type aliases and interfaces to be deeply readonly unless prefixed with "Mutable".\
+This is the default config.
 
-##### `aliases.mustBeReadonly.requireOthersToBeMutable`
-
-If set, all other types that don't match the pattern(s) must **not** be deeply readonly.
-
-#### `aliases.mustBeMutable`
-
-##### `aliases.mustBeMutable.pattern`
-
-The regex pattern(s) used to test against the type's name. If it's a match the type must **not** be deeply readonly.
-
-Set to an empty array to disable this check.
-
-##### `aliases.mustBeMutable.requireOthersToBeReadonly`
-
-If set, all other types that don't match the pattern(s) must be deeply readonly.
-
-#### `aliases.blacklist`
-
-Any type names that match this regex pattern(s) will be ignored by this rule.
-
-#### `aliases` Examples
-
-By toggling the default settings of `aliases.mustBeReadonly.requireOthersToBeMutable` and `aliases.mustBeMutable.requireOthersToBeReadonly`, you can make it so that types are mutable by default and immutable versions need to be prefixed. This more closely matches how TypeScript itself implements types like `Set` and `ReadonlySet`.
-
-```ts
-/* eslint functional/prefer-readonly-type-declaration: ["error", { "aliases": { "mustBeReadonly": { "requireOthersToBeMutable": true }, "mustBeMutable": { "requireOthersToBeReadonly": false } } }] */
-
-type Point = {
-  x: number;
-  y: number;
-};
-type ReadonlyPoint = Readonly<Point>;
+```jsonc
+{
+  "readonlyAliasPatterns": "^(?!I?Mutable).+$",
+  "mutableAliasPatterns": "^I?Mutable.+$",
+}
 ```
 
-Alternatively, if both `aliases.mustBeReadonly.requireOthersToBeMutable` and `aliases.mustBeMutable.requireOthersToBeReadonly` are set, you can make it so that types explicitly need to be marked as either readonly or mutable.
+Require all deeply readonly type aliases and interfaces to be prefixed with "Readonly".
 
-```ts
-/* eslint functional/prefer-readonly-type-declaration: ["error", { "aliases": { "mustBeReadonly": { "requireOthersToBeMutable": true }, "mustBeMutable": { "requireOthersToBeReadonly": true } } }] */
-
-type MutablePoint = {
-  x: number;
-  y: number;
-};
-type ReadonlyPoint = Readonly<MutablePoint>;
+```jsonc
+{
+  "readonlyAliasPatterns": "^I?Readonly.+$",
+  "mutableAliasPatterns": "^(?!I?Readonly).+$",
+}
 ```
+
+Require all type aliases and interfaces to be explicity prefixed with either "Readonly" or "Mutable".
+
+```jsonc
+{
+  "readonlyAliasPatterns": "^I?Readonly.+$",
+  "mutableAliasPatterns": "^I?Mutable.+$",
+}
+```
+
+### `ignoreAliasPatterns`
+
+Any type alias or interface declaration that matches one of these patterns will be ignored for readonlyness.
 
 ### `allowLocalMutation`
 
@@ -233,4 +202,9 @@ See the [allowLocalMutation](./options/allow-local-mutation.md) docs.
 
 ### `ignorePattern`
 
-See the [ignorePattern](./options/ignore-pattern.md) docs.
+Use the given regex pattern(s) to match against the type's name (for objects this is the property's name not the object's name).
+
+Note: If using this option to require mutable properties are marked as mutable via a naming convention (e.g. `{ "ignorePattern": "^[Mm]utable.+" }`),
+type aliases and interfaces names will still need to comply with the `readonlyAliasPatterns` and `mutableAliasPatterns` options.
+
+See the [ignorePattern](./options/ignore-pattern.md) docs for more info.

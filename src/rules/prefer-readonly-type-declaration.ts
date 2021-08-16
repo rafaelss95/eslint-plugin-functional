@@ -43,17 +43,9 @@ type Options = AllowLocalMutationOption &
   IgnorePatternOption & {
     readonly allowMutableReturnType: boolean;
     readonly ignoreCollections: boolean;
-    readonly aliases: {
-      readonly mustBeReadonly: {
-        readonly pattern: ReadonlyArray<string> | string;
-        readonly requireOthersToBeMutable: boolean;
-      };
-      readonly mustBeMutable: {
-        readonly pattern: ReadonlyArray<string> | string;
-        readonly requireOthersToBeReadonly: boolean;
-      };
-      readonly blacklist: ReadonlyArray<string> | string;
-    };
+    readonly ignoreAliasPatterns: ReadonlyArray<string> | string;
+    readonly readonlyAliasPatterns: ReadonlyArray<string> | string;
+    readonly mutableAliasPatterns: ReadonlyArray<string> | string;
   };
 
 // The schema for the rule options.
@@ -72,53 +64,23 @@ const schema: JSONSchema4 = [
         ignoreCollections: {
           type: "boolean",
         },
-        aliases: {
-          type: "object",
-          properties: {
-            mustBeReadonly: {
-              type: "object",
-              properties: {
-                pattern: {
-                  type: ["string", "array"],
-                  items: {
-                    type: "string",
-                  },
-                },
-                requireOthersToBeMutable: {
-                  type: "boolean",
-                },
-              },
-              additionalProperties: false,
-            },
-            mustBeMutable: {
-              type: "object",
-              properties: {
-                pattern: {
-                  type: ["string", "array"],
-                  items: {
-                    type: "string",
-                  },
-                },
-                requireOthersToBeReadonly: {
-                  type: "boolean",
-                },
-              },
-              additionalProperties: false,
-            },
-            blacklist: {
-              type: "array",
-              items: {
-                type: ["string", "array"],
-                items: {
-                  type: "string",
-                },
-              },
-            },
-            ignoreInterface: {
-              type: "boolean",
-            },
+        ignoreAliasPatterns: {
+          type: ["string", "array"],
+          items: {
+            type: "string",
           },
-          additionalProperties: false,
+        },
+        readonlyAliasPatterns: {
+          type: ["string", "array"],
+          items: {
+            type: "string",
+          },
+        },
+        mutableAliasPatterns: {
+          type: ["string", "array"],
+          items: {
+            type: "string",
+          },
         },
       },
       additionalProperties: false,
@@ -133,17 +95,9 @@ const defaultOptions: Options = {
   ignoreCollections: false,
   allowLocalMutation: false,
   allowMutableReturnType: true,
-  aliases: {
-    blacklist: "^Mutable$",
-    mustBeReadonly: {
-      pattern: "^(I?)Readonly",
-      requireOthersToBeMutable: false,
-    },
-    mustBeMutable: {
-      pattern: "^(I?)Mutable",
-      requireOthersToBeReadonly: true,
-    },
-  },
+  readonlyAliasPatterns: "^(?!I?Mutable).+$",
+  mutableAliasPatterns: "^I?Mutable.+$",
+  ignoreAliasPatterns: "^Mutable$",
 };
 
 // The possible error messages.
@@ -255,9 +209,9 @@ function getTypeAliasDeclarationDetailsInternal(
   options: Options
 ): TypeReadonlynessDetails {
   const blacklistPatterns = (
-    Array.isArray(options.aliases.blacklist)
-      ? options.aliases.blacklist
-      : [options.aliases.blacklist]
+    Array.isArray(options.ignoreAliasPatterns)
+      ? options.ignoreAliasPatterns
+      : [options.ignoreAliasPatterns]
   ).map((pattern) => new RegExp(pattern, "u"));
 
   const blacklisted = blacklistPatterns.some((pattern) =>
@@ -269,16 +223,23 @@ function getTypeAliasDeclarationDetailsInternal(
   }
 
   const mustBeReadonlyPatterns = (
-    Array.isArray(options.aliases.mustBeReadonly.pattern)
-      ? options.aliases.mustBeReadonly.pattern
-      : [options.aliases.mustBeReadonly.pattern]
+    Array.isArray(options.readonlyAliasPatterns)
+      ? options.readonlyAliasPatterns
+      : [options.readonlyAliasPatterns]
   ).map((pattern) => new RegExp(pattern, "u"));
 
   const mustBeMutablePatterns = (
-    Array.isArray(options.aliases.mustBeMutable.pattern)
-      ? options.aliases.mustBeMutable.pattern
-      : [options.aliases.mustBeMutable.pattern]
+    Array.isArray(options.mutableAliasPatterns)
+      ? options.mutableAliasPatterns
+      : [options.mutableAliasPatterns]
   ).map((pattern) => new RegExp(pattern, "u"));
+
+  if (
+    mustBeReadonlyPatterns.length === 0 &&
+    mustBeMutablePatterns.length === 0
+  ) {
+    return TypeReadonlynessDetails.IGNORE;
+  }
 
   const patternStatesReadonly = mustBeReadonlyPatterns.some((pattern) =>
     pattern.test(node.id.name)
@@ -291,27 +252,17 @@ function getTypeAliasDeclarationDetailsInternal(
     return TypeReadonlynessDetails.ERROR_MUTABLE_READONLY;
   }
 
-  if (
-    !patternStatesReadonly &&
-    !patternStatesMutable &&
-    options.aliases.mustBeReadonly.requireOthersToBeMutable &&
-    options.aliases.mustBeMutable.requireOthersToBeReadonly
-  ) {
-    return TypeReadonlynessDetails.NEEDS_EXPLICIT_MARKING;
-  }
-
-  const requiredReadonlyness =
-    patternStatesReadonly ||
-    (!patternStatesMutable &&
-      options.aliases.mustBeMutable.requireOthersToBeReadonly)
-      ? RequiredReadonlyness.READONLY
-      : patternStatesMutable ||
-        (!patternStatesReadonly &&
-          options.aliases.mustBeReadonly.requireOthersToBeMutable)
-      ? RequiredReadonlyness.MUTABLE
-      : RequiredReadonlyness.EITHER;
+  const requiredReadonlyness = patternStatesReadonly
+    ? RequiredReadonlyness.READONLY
+    : patternStatesMutable
+    ? RequiredReadonlyness.MUTABLE
+    : RequiredReadonlyness.EITHER;
 
   if (requiredReadonlyness === RequiredReadonlyness.EITHER) {
+    if (mustBeReadonlyPatterns.length > 0 && mustBeMutablePatterns.length > 0) {
+      return TypeReadonlynessDetails.NEEDS_EXPLICIT_MARKING;
+    }
+
     return TypeReadonlynessDetails.IGNORE;
   }
 

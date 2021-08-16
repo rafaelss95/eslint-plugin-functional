@@ -1189,6 +1189,28 @@ const tests: ReadonlyArray<InvalidTestCase> = [
       },
     ],
   },
+  // Readonly type has mutable property.
+  {
+    code: dedent`
+      type Foo = {
+        mutableProp: string
+      } `,
+    optionsSet: [
+      [
+        {
+          ignorePattern: "^mutable",
+        },
+      ],
+    ],
+    errors: [
+      {
+        messageId: "aliasShouldBeReadonly",
+        type: "Identifier",
+        line: 1,
+        column: 6,
+      },
+    ],
+  },
   // Mutable types should not be readonly.
   {
     code: dedent`
@@ -1198,14 +1220,8 @@ const tests: ReadonlyArray<InvalidTestCase> = [
     optionsSet: [
       [
         {
-          aliases: {
-            mustBeReadonly: {
-              requireOthersToBeMutable: true,
-            },
-            mustBeMutable: {
-              requireOthersToBeReadonly: false,
-            },
-          },
+          readonlyAliasPatterns: "^I?Readonly.+$",
+          mutableAliasPatterns: "^(?!I?Readonly).+$",
         },
       ],
     ],
@@ -1241,14 +1257,8 @@ const tests: ReadonlyArray<InvalidTestCase> = [
     optionsSet: [
       [
         {
-          aliases: {
-            mustBeReadonly: {
-              requireOthersToBeMutable: true,
-            },
-            mustBeMutable: {
-              requireOthersToBeReadonly: true,
-            },
-          },
+          readonlyAliasPatterns: "^I?Readonly.+$",
+          mutableAliasPatterns: "^I?Mutable.+$",
         },
       ],
     ],
@@ -1268,14 +1278,8 @@ const tests: ReadonlyArray<InvalidTestCase> = [
     optionsSet: [
       [
         {
-          aliases: {
-            mustBeReadonly: {
-              pattern: ".*",
-            },
-            mustBeMutable: {
-              pattern: ".*",
-            },
-          },
+          readonlyAliasPatterns: ".+",
+          mutableAliasPatterns: ".+",
         },
       ],
     ],

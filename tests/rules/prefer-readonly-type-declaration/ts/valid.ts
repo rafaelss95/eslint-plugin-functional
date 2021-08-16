@@ -136,7 +136,15 @@ const tests: ReadonlyArray<ValidTestCase> = [
       function foo(bar: string): { baz: number } {
         return 1 as any;
       }`,
-    optionsSet: [[{ allowMutableReturnType: true }]],
+    optionsSet: [[]],
+  },
+  // Don't allow inline mutable return type.
+  {
+    code: dedent`
+      function foo(bar: string): { readonly baz: number } {
+        return 1 as any;
+      }`,
+    optionsSet: [[{ allowMutableReturnType: false }]],
   },
   // Should not fail on implicit Array.
   {
@@ -380,14 +388,8 @@ const tests: ReadonlyArray<ValidTestCase> = [
     optionsSet: [
       [
         {
-          aliases: {
-            mustBeReadonly: {
-              requireOthersToBeMutable: true,
-            },
-            mustBeMutable: {
-              requireOthersToBeReadonly: false,
-            },
-          },
+          readonlyAliasPatterns: "^I?Readonly.+$",
+          mutableAliasPatterns: "^(?!I?Readonly).+$",
         },
       ],
     ],
@@ -410,14 +412,8 @@ const tests: ReadonlyArray<ValidTestCase> = [
     optionsSet: [
       [
         {
-          aliases: {
-            mustBeReadonly: {
-              requireOthersToBeMutable: true,
-            },
-            mustBeMutable: {
-              requireOthersToBeReadonly: false,
-            },
-          },
+          readonlyAliasPatterns: "^I?Readonly.+$",
+          mutableAliasPatterns: "^(?!I?Readonly).+$",
         },
       ],
     ],
@@ -442,14 +438,35 @@ const tests: ReadonlyArray<ValidTestCase> = [
     optionsSet: [
       [
         {
-          aliases: {
-            mustBeReadonly: {
-              requireOthersToBeMutable: true,
-            },
-            mustBeMutable: {
-              requireOthersToBeReadonly: false,
-            },
-          },
+          readonlyAliasPatterns: "^I?Readonly.+$",
+          mutableAliasPatterns: "^(?!I?Readonly).+$",
+        },
+      ],
+    ],
+  },
+  {
+    code: dedent`
+      type MutableFoo = {
+        mutableProp: string
+      } `,
+    optionsSet: [
+      [
+        {
+          ignorePattern: "^mutable",
+        },
+      ],
+    ],
+  },
+  {
+    code: dedent`
+      type Foo = {
+        mutableProp: string
+      } `,
+    optionsSet: [
+      [
+        {
+          ignorePattern: "^mutable",
+          readonlyAliasPatterns: [],
         },
       ],
     ],
