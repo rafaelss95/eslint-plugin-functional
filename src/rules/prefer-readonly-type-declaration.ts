@@ -9,6 +9,10 @@ import type {
   IgnorePatternOption,
 } from "~/common/ignore-options";
 import {
+  shouldIgnoreClass,
+  shouldIgnoreInterface,
+  shouldIgnoreLocalMutation,
+  shouldIgnorePattern,
   allowLocalMutationOptionSchema,
   ignoreClassOptionSchema,
   ignoreInterfaceOptionSchema,
@@ -290,6 +294,18 @@ function checkTypeDeclaration(
   context: RuleContext<keyof typeof errorMessages, Options>,
   options: Options
 ): RuleResult<keyof typeof errorMessages, Options> {
+  if (
+    shouldIgnoreClass(node, context, options) ||
+    shouldIgnoreInterface(node, context, options) ||
+    shouldIgnoreLocalMutation(node, context, options) ||
+    shouldIgnorePattern(node, context, options)
+  ) {
+    return {
+      context,
+      descriptors: [],
+    };
+  }
+
   const details = getTypeAliasDeclarationDetails(node, context, options);
 
   switch (details) {
@@ -354,7 +370,13 @@ function checkArrayOrTupleType(
   context: RuleContext<keyof typeof errorMessages, Options>,
   options: Options
 ): RuleResult<keyof typeof errorMessages, Options> {
-  if (options.ignoreCollections) {
+  if (
+    options.ignoreCollections ||
+    shouldIgnoreClass(node, context, options) ||
+    shouldIgnoreInterface(node, context, options) ||
+    shouldIgnoreLocalMutation(node, context, options) ||
+    shouldIgnorePattern(node, context, options)
+  ) {
     return {
       context,
       descriptors: [],
@@ -408,6 +430,18 @@ function checkMappedType(
   context: RuleContext<keyof typeof errorMessages, Options>,
   options: Options
 ): RuleResult<keyof typeof errorMessages, Options> {
+  if (
+    shouldIgnoreClass(node, context, options) ||
+    shouldIgnoreInterface(node, context, options) ||
+    shouldIgnoreLocalMutation(node, context, options) ||
+    shouldIgnorePattern(node, context, options)
+  ) {
+    return {
+      context,
+      descriptors: [],
+    };
+  }
+
   const aliasDetails = getTypeAliasDeclarationDetails(node, context, options);
 
   switch (aliasDetails) {
@@ -450,7 +484,11 @@ function checkTypeReference(
 ): RuleResult<keyof typeof errorMessages, Options> {
   if (
     !isIdentifier(node.typeName) ||
-    (options.ignoreCollections && mutableTypeRegex.test(node.typeName.name))
+    (options.ignoreCollections && mutableTypeRegex.test(node.typeName.name)) ||
+    shouldIgnoreClass(node, context, options) ||
+    shouldIgnoreInterface(node, context, options) ||
+    shouldIgnoreLocalMutation(node, context, options) ||
+    shouldIgnorePattern(node, context, options)
   ) {
     return {
       context,
@@ -503,6 +541,18 @@ function checkProperty(
   context: RuleContext<keyof typeof errorMessages, Options>,
   options: Options
 ): RuleResult<keyof typeof errorMessages, Options> {
+  if (
+    shouldIgnoreClass(node, context, options) ||
+    shouldIgnoreInterface(node, context, options) ||
+    shouldIgnoreLocalMutation(node, context, options) ||
+    shouldIgnorePattern(node, context, options)
+  ) {
+    return {
+      context,
+      descriptors: [],
+    };
+  }
+
   const aliasDetails = getTypeAliasDeclarationDetails(node, context, options);
 
   switch (aliasDetails) {
